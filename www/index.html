@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Tasks</title>
+<style>
+  :root {
+    --bg: #f6f9f7;
+    --surface: #ffffff;
+    --text: #0d0f0e;
+    --muted: #6b756f;
+    --primary: #4cd68a;          /* light green (fills) */
+    --on-primary: #07210f;       /* text on green */
+    --ink: #13804a;              /* green used for text on white */
+    --primary-soft: #e5f7ed;
+    --danger: #f0476a;
+    --warn: #d98a00;
+    --blue: #4a8df0;
+    --line: #e4ebe7;
+    --shadow: 0 4px 16px rgba(10, 40, 25, 0.07);
+  }
+  [data-theme="dark"] {
+    --bg: #080909;
+    --surface: #151716;
+    --text: #f3f5f4;
+    --muted: #8c9791;
+    --ink: #5ee59c;
+    --primary-soft: #12261b;
+    --line: #252a27;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background .3s, color .3s;
+  }
+  button, input { font-family: inherit; }
+
+  /* ---------- Full-screen app ---------- */
+  .phone {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    overflow: hidden;
+    transition: background .3s;
+  }
+  .screen {
+    position: absolute; top: 0; bottom: 0; left: 0; right: 0;
+    width: 100%; max-width: 560px; margin: 0 auto;
+    display: flex; flex-direction: column;
+    padding: max(22px, env(safe-area-inset-top)) 18px 0;
+  }
+
+  /* ---------- Header ---------- */
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  header .title { flex: 1; min-width: 0; }
+  header h1 { font-size: 24px; font-weight: 800; letter-spacing: -.5px; }
+  header p { color: var(--muted); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn {
+    width: 42px; height: 42px; border-radius: 14px; border: none; cursor: pointer;
+    background: var(--primary-soft); color: var(--ink); font-size: 18px;
+    display: grid; place-items: center; transition: transform .15s; flex-shrink: 0;
+  }
+  .icon-btn:active { transform: scale(.93); }
+  .avatar-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--primary);
+    background-color: var(--primary); color: var(--on-primary); font-weight: 800; font-size: 15px;
+    cursor: pointer; display: grid; place-items: center; flex-shrink: 0; transition: transform .15s;
+  }
+  .avatar-btn.guest { background-color: var(--primary-soft); color: var(--ink); border-color: var(--primary-soft); }
+  .avatar-btn:active { transform: scale(.93); }
+  .avatar-btn svg { width: 22px; height: 22px; }
+  .has-photo { background-size: cover !important; background-position: center !important; color: transparent !important; }
+
+  /* ---------- Progress ---------- */
+  .progress-card {
+    background: linear-gradient(135deg, #8be8b3, #4cd68a);
+    color: var(--on-primary); border-radius: 22px; padding: 16px 18px; margin-bottom: 12px;
+    box-shadow: 0 10px 24px rgba(76, 214, 138, .30);
+  }
+  .progress-card h2 { font-size: 16px; font-weight: 800; }
+  .bar { height: 8px; background: rgba(7, 33, 15, .15); border-radius: 10px; margin: 10px 0 6px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--on-primary); border-radius: 10px; transition: width .4s ease; }
+  .progress-card small { opacity: .85; font-size: 12px; font-weight: 600; }
+
+  /* ---------- Search + Filters ---------- */
+  .search {
+    display: flex; align-items: center; gap: 8px; background: var(--surface);
+    border-radius: 14px; padding: 0 6px 0 14px; margin-bottom: 10px; box-shadow: var(--shadow);
+    border: 2px solid transparent; transition: border-color .2s;
+  }
+  .search:focus-within { border-color: var(--primary); }
+  .search input {
+    flex: 1; min-width: 0; border: none; background: transparent; color: var(--text);
+    padding: 10px 0; font-size: 14px; outline: none;
+  }
+  .search button {
+    border: none; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer;
+    width: 30px; height: 30px; border-radius: 10px; display: none;
+  }
+  .search.has-text button { display: block; }
+
+  .filters { display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .filters button {
+    flex: 1; padding: 8px 2px; border: none; border-radius: 10px; background: transparent;
+    color: var(--muted); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s;
+  }
+  .filters button.active { background: var(--primary-soft); color: var(--ink); }
+  .filters button[data-f="overdue"].active { background: rgba(240,71,106,.13); color: var(--danger); }
+
+  /* ---------- List ---------- */
+  .list-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 2px 16px; margin: 0 -2px; scrollbar-width: none; }
+  .list-wrap::-webkit-scrollbar { display: none; }
+  ul { list-style: none; }
+  li {
+    --p: var(--muted);
+    display: flex; align-items: center; gap: 11px; background: var(--surface);
+    padding: 12px 8px 12px 14px; border-radius: 16px; margin-bottom: 10px; box-shadow: var(--shadow);
+    border-left: 5px solid var(--p);
+    animation: pop .25s ease; cursor: pointer;
+  }
+  li[data-p="high"] { --p: var(--danger); }
+  li[data-p="med"]  { --p: #ffb02e; }
+  li[data-p="low"]  { --p: var(--blue); }
+  li.done { --p: var(--line); }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+  .check {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--muted);
+    display: grid; place-items: center; flex-shrink: 0; color: transparent; font-size: 13px; font-weight: 800; transition: all .2s;
+  }
+  li.done .check { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  .body { flex: 1; min-width: 0; }
+  .label { font-size: 15px; font-weight: 600; word-break: break-word; }
+  li.done .label { text-decoration: line-through; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .meta:empty { display: none; }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    background: var(--primary-soft); color: var(--ink); white-space: nowrap;
+  }
+  .badge.high { background: rgba(240,71,106,.13); color: var(--danger); }
+  .badge.med  { background: rgba(255,176,46,.18); color: var(--warn); }
+  .badge.low  { background: rgba(74,141,240,.14); color: var(--blue); }
+  .badge.overdue { background: var(--danger); color: #fff; }
+  .badge.soon { background: rgba(255,176,46,.2); color: var(--warn); }
+  li.done .badge { opacity: .6; }
+  .mini {
+    border: none; background: transparent; color: var(--muted); font-size: 17px; cursor: pointer;
+    width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; line-height: 1;
+  }
+  .mini.edit:hover { background: var(--primary-soft); color: var(--ink); }
+  .mini.del { font-size: 22px; }
+  .mini.del:hover { background: rgba(240,71,106,.12); color: var(--danger); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 14px; line-height: 1.5; }
+  .empty div { font-size: 46px; margin-bottom: 8px; opacity: .7; }
+
+  /* ---------- Add bar ---------- */
+  .add-bar { display: flex; gap: 8px; padding: 10px 0 max(18px, env(safe-area-inset-bottom)); background: var(--bg); transition: background .3s; }
+  .add-bar input {
+    flex: 1; min-width: 0; padding: 14px 16px; border-radius: 16px; border: 2px solid transparent;
+    background: var(--surface); color: var(--text); font-size: 15px; outline: none; box-shadow: var(--shadow);
+  }
+  .add-bar input:focus { border-color: var(--primary); }
+  .add-bar button {
+    width: 50px; border: none; border-radius: 16px; font-size: 26px; cursor: pointer; transition: transform .15s; flex-shrink: 0;
+  }
+  .add-bar .opt { background: var(--primary-soft); color: var(--ink); font-size: 20px; }
+  .add-bar .go  { background: var(--primary); color: var(--on-primary); font-weight: 700; }
+  .add-bar button:active { transform: scale(.94); }
+
+  /* ---------- Overlay / popups ---------- */
+  .overlay {
+    position: absolute; inset: 0; z-index: 40;
+    background: rgba(0, 0, 0, .5); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; padding: 18px;
+  }
+  .overlay.open { display: flex; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .popup {
+    width: 100%; max-width: 440px; max-height: 100%; overflow-y: auto; scrollbar-width: none;
+    background: var(--surface); border-radius: 26px; padding: 22px 20px 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35); animation: rise .28s ease; position: relative;
+  }
+  .popup::-webkit-scrollbar { display: none; }
+  @keyframes rise { from { opacity: 0; transform: translateY(24px) scale(.97); } to { opacity: 1; transform: none; } }
+  .close-x {
+    position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border: none;
+    border-radius: 12px; background: var(--primary-soft); color: var(--ink); font-size: 18px; cursor: pointer; z-index: 2;
+  }
+  .popup h3 { font-size: 21px; font-weight: 800; margin-bottom: 4px; padding-right: 36px; }
+  .popup .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; line-height: 1.4; }
+
+  .tabs { display: flex; gap: 4px; background: var(--primary-soft); padding: 4px; border-radius: 14px; margin-bottom: 16px; }
+  .tabs button {
+    flex: 1; padding: 9px; border: none; border-radius: 10px; background: transparent;
+    color: var(--muted); font-weight: 700; font-size: 14px; cursor: pointer; transition: all .2s;
+  }
+  .tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+  .input-wrap { position: relative; }
+  .field input {
+    width: 100%; padding: 13px 14px; border-radius: 14px; border: 2px solid var(--line);
+    background: var(--bg); color: var(--text); font-size: 15px; outline: none; transition: border-color .2s;
+  }
+  .field input:focus { border-color: var(--primary); }
+  .field input.bad { border-color: var(--danger); }
+  .field input:disabled { opacity: .6; }
+  [data-theme="dark"] input[type="datetime-local"] { color-scheme: dark; }
+  .eye {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    border: none; background: transparent; color: var(--muted); font-size: 17px; cursor: pointer; padding: 6px;
+  }
+  .err { color: var(--danger); font-size: 12.5px; min-height: 18px; margin-bottom: 8px; font-weight: 600; }
+  .primary-btn {
+    width: 100%; padding: 14px; border: none; border-radius: 15px; background: var(--primary);
+    color: var(--on-primary); font-size: 15px; font-weight: 800; cursor: pointer; transition: transform .15s, opacity .2s;
+  }
+  .primary-btn:active { transform: scale(.98); }
+  .primary-btn:disabled { opacity: .6; }
+  .ghost-btn {
+    width: 100%; padding: 13px; border: 2px solid var(--line); border-radius: 15px; background: transparent;
+    color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px;
+  }
+  .ghost-btn.danger { color: var(--danger); }
+  .switch { text-align: center; font-size: 13px; color: var(--muted); margin-top: 14px; }
+  .switch button { border: none; background: none; color: var(--ink); font-weight: 800; cursor: pointer; font-size: 13px; }
+
+  /* priority + due chips */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chips button {
+    flex: 1; padding: 10px 6px; border-radius: 13px; border: 2px solid var(--line); background: var(--bg);
+    color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .chips button[data-p="high"].active { border-color: var(--danger); background: rgba(240,71,106,.12); color: var(--danger); }
+  .chips button[data-p="med"].active  { border-color: #ffb02e; background: rgba(255,176,46,.16); color: var(--warn); }
+  .chips button[data-p="low"].active  { border-color: var(--blue); background: rgba(74,141,240,.13); color: var(--blue); }
+  .chips.quick { margin-top: 8px; }
+  .chips.quick button { padding: 7px 6px; font-size: 12.5px; border-radius: 11px; background: var(--primary-soft); border-color: transparent; color: var(--ink); }
+
+  /* ---------- Profile ---------- */
+  .profile-top { text-align: center; margin-bottom: 18px; }
+  .big-avatar {
+    width: 78px; height: 78px; border-radius: 50%; margin: 0 auto 12px;
+    background: linear-gradient(135deg, #8be8b3, #4cd68a); color: var(--on-primary);
+    display: grid; place-items: center; font-size: 28px; font-weight: 800;
+    box-shadow: 0 10px 22px rgba(76,214,138,.35);
+  }
+  .profile-top h3 { padding: 0; margin: 0; }
+  .profile-top p { color: var(--muted); font-size: 14px; margin-top: 2px; word-break: break-all; }
+  .info-list { border: 2px solid var(--line); border-radius: 18px; overflow: hidden; margin-bottom: 14px; }
+  .info-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; font-size: 14px; }
+  .info-row + .info-row { border-top: 1px solid var(--line); }
+  .info-row span:first-child { color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .info-row span:last-child { font-weight: 700; text-align: right; word-break: break-all; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .stat { background: var(--primary-soft); border-radius: 14px; padding: 10px 2px; text-align: center; }
+  .stat b { display: block; font-size: 20px; color: var(--ink); }
+  .stat.red b { color: var(--danger); }
+  .stat small { color: var(--muted); font-size: 11px; font-weight: 600; }
+
+  .photo-row { display: flex; align-items: center; gap: 14px; margin: 6px 0 16px; }
+  .photo-row .big-avatar { margin: 0; width: 70px; height: 70px; font-size: 24px; flex-shrink: 0; }
+  .photo-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .small-btn {
+    border: none; border-radius: 11px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    background: var(--primary-soft); color: var(--ink); display: inline-block;
+  }
+  .small-btn.danger { background: rgba(240,71,106,.12); color: var(--danger); }
+  .divider { font-size: 12px; font-weight: 700; color: var(--muted); margin: 16px 0 10px; display: flex; align-items: center; gap: 10px; }
+  .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: absolute; left: 50%; bottom: 90px; transform: translate(-50%, 20px);
+    background: var(--text); color: var(--bg); padding: 11px 18px; border-radius: 14px; font-size: 13.5px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; z-index: 60; white-space: nowrap; max-width: 90%;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <div class="screen">
+    <header>
+      <div class="title">
+        <h1>My Tasks</h1>
+        <p id="subtitle">Sign in to start</p>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme">🌙</button>
+      <button class="avatar-btn guest" id="profileBtn" title="Profile" aria-label="Profile"></button>
+    </header>
+
+    <section class="progress-card">
+      <h2 id="count">0 of 0 completed</h2>
+      <div class="bar"><span id="fill"></span></div>
+      <small id="percent">0%</small>
+    </section>
+
+    <div class="search" id="searchBox">
+      <span>🔍</span>
+      <input id="searchInput" type="text" placeholder="Search tasks..." autocomplete="off">
+      <button id="searchClear" type="button" aria-label="Clear search">✕</button>
+    </div>
+
+    <div class="filters" id="filters">
+      <button data-f="all" class="active">All</button>
+      <button data-f="active">Active</button>
+      <button data-f="done">Done</button>
+      <button data-f="overdue">Overdue</button>
+    </div>
+
+    <div class="list-wrap"><ul id="list"></ul></div>
+
+    <form class="add-bar" id="addForm">
+      <input id="taskInput" type="text" placeholder="Add a new task..." autocomplete="off" maxlength="120">
+      <button type="button" class="opt" id="moreBtn" title="Priority &amp; due date" aria-label="Priority and due date">📅</button>
+      <button type="submit" class="go" aria-label="Add task">+</button>
+    </form>
+  </div>
+
+  <!-- Task (add / edit) popup -->
+  <div class="overlay" id="taskOverlay">
+    <div class="popup" role="dialog" aria-modal="true">
+      <button class="close-x" id="taskClose" aria-label="Close">✕</button>
+      <h3 id="taskTitle">New task</h3>
+      <p class="sub">Set a priority and an optional deadline.</p>
+      <form id="taskForm" novalidate>
+        <div class="field">
+          <label for="tText">Task</label>
+          <input id="tText" type="text" maxlength="120" placeholder="What do you need to do?" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <div class="chips" id="prioChips">
+            <button type="button" data-p="low">Low</button>
+            <button type="button" data-p="med" class="active">Medium</button>
+            <button type="button" data-p="high">High</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="tDue">Due date &amp; time (optional)</label>
+          <input id="tDue" type="datetime-local">
+          <div class="chips quick" id="quickDue">
+            <button type="button" data-q="today">Today</button>
+            <button type="button" data-q="tomorrow">Tomorrow</button>
+            <button type="button" data-q="clear">Clear</button>
+          </div>
+        </div>
+        <div class="err" id="taskErr"></div>
+        <button class="primary-btn" id="taskSave" type="submit">Add task</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Auth popup -->
+  <div class="overlay" id="authOverlay">
+    <div class="popup" role="dialog" aria-modal="true">
+      <button class="close-x" id="authClose" aria-label="Close">✕</button>
+      <h3 id="authTitle">Welcome back</h3>
+      <p class="sub" id="authSub">Sign in to add and save your tasks.</p>
+
+      <div class="tabs" id="authTabs">
+        <button data-mode="signin" class="active" type="button">Sign in</button>
+        <button data-mode="signup" type="button">Sign up</button>
+      </div>
+
+      <form id="authForm" novalidate>
+        <div class="field" id="nameField" style="display:none">
+          <label for="nameInput">Full name</label>
+          <input id="nameInput" type="text" placeholder="Your name" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="emailInput">Email</label>
+          <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="passInput">Password</label>
+          <div class="input-wrap">
+            <input id="passInput" type="password" placeholder="At least 6 characters" autocomplete="current-password">
+            <button class="eye" id="eyeBtn" type="button" aria-label="Show password">👁</button>
+          </div>
+        </div>
+        <div class="err" id="authErr"></div>
+        <button class="primary-btn" id="authSubmit" type="submit">Sign in</button>
+      </form>
+
+      <div class="switch" id="authSwitch">
+        New here? <button type="button" id="switchBtn">Create an account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile popup -->
+  <div class="overlay" id="profileOverlay">
+    <div class="popup" role="dialog" aria-modal="true">
+      <button class="close-x" id="profileClose" aria-label="Close">✕</button>
+
+      <!-- view mode -->
+      <div id="profileView">
+        <div class="profile-top">
+          <div class="big-avatar" id="pAvatar">U</div>
+          <h3 id="pName">Name</h3>
+          <p id="pEmail">email</p>
+        </div>
+        <div class="info-list">
+          <div class="info-row"><span>Full name</span><span id="iName"></span></div>
+          <div class="info-row"><span>Email</span><span id="iEmail"></span></div>
+          <div class="info-row"><span>Password</span><span>••••••••</span></div>
+          <div class="info-row"><span>Member since</span><span id="iSince"></span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="sTotal">0</b><small>Total</small></div>
+          <div class="stat"><b id="sDone">0</b><small>Done</small></div>
+          <div class="stat"><b id="sPending">0</b><small>Pending</small></div>
+          <div class="stat red"><b id="sOverdue">0</b><small>Overdue</small></div>
+        </div>
+        <button class="primary-btn" id="editProfileBtn" type="button" style="margin-top:14px">Edit profile</button>
+        <button class="ghost-btn danger" id="logoutBtn" type="button">Log out</button>
+      </div>
+
+      <!-- edit mode -->
+      <div id="profileEdit" style="display:none">
+        <h3>Edit profile</h3>
+        <p class="sub">Change your name, photo or password.</p>
+        <form id="profileForm" novalidate>
+          <div class="photo-row">
+            <div class="big-avatar" id="eAvatar">U</div>
+            <div class="photo-actions">
+              <label class="small-btn" for="photoInput">Upload photo</label>
+              <input id="photoInput" type="file" accept="image/*" hidden>
+              <button class="small-btn danger" id="removePhotoBtn" type="button">Remove photo</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="eName">Full name</label>
+            <input id="eName" type="text" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="eEmail">Email</label>
+            <input id="eEmail" type="email" disabled>
+          </div>
+          <div class="divider">Change password (optional)</div>
+          <div class="field">
+            <label for="ePassCur">Current password</label>
+            <input id="ePassCur" type="password" autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label for="ePassNew">New password</label>
+            <input id="ePassNew" type="password" placeholder="At least 6 characters" autocomplete="new-password">
+          </div>
+          <div class="err" id="editErr"></div>
+          <button class="primary-btn" id="profileSave" type="submit">Save changes</button>
+          <button class="ghost-btn" id="editCancel" type="button">Cancel</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const USERS_KEY = "todo_users_v1";
+  const SESSION_KEY = "todo_session_v1";
+  const THEME_KEY = "todo_theme_v1";
+  const tasksKey = (email) => "todo_tasks_v1_" + email;
+  const PRIOS = { high: "High", med: "Medium", low: "Low" };
+
+  /* ---------- safe storage ---------- */
+  function read(key, fallback) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch (e) { return fallback; }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { return false; }
+  }
+  function remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
+
+  /* ---------- state ---------- */
+  let currentUser = null;      // { name, email, created, photo }
+  let todos = [];
+  let filter = "all";
+  let query = "";
+  let authMode = "signin";
+  let pendingTask = null;      // task built before signing in
+  let editingId = null;        // id of task being edited (null = new)
+  let sheetPrio = "med";
+  let editPhotoVal = "";       // photo chosen in profile edit
+
+  /* ---------- helpers ---------- */
+  async function hashPassword(pass, email) {
+    const text = email + ":" + pass;
+    try {
+      if (window.crypto && crypto.subtle) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      }
+    } catch (e) {}
+    return btoa(unescape(encodeURIComponent(text)));
+  }
+
+  function initials(name) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "U";
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+  }
+
+  function formatDate(ts) {
+    try { return new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); }
+    catch (e) { return ""; }
+  }
+
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  function paintAvatar(el, name, photo) {
+    if (photo) {
+      el.style.backgroundImage = 'url("' + photo + '")';
+      el.classList.add("has-photo");
+      el.textContent = "";
+    } else {
+      el.style.backgroundImage = "";
+      el.classList.remove("has-photo");
+      el.textContent = initials(name || "");
+    }
+  }
+
+  const GUEST_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+
+  /* ---------- task model ---------- */
+  function normalize(t) {
+    return {
+      id: t.id,
+      text: String(t.text || ""),
+      done: !!t.done,
+      priority: PRIOS[t.priority] ? t.priority : "med",
+      due: typeof t.due === "string" ? t.due : ""
+    };
+  }
+
+  function dueDate(t) {
+    if (!t.due) return null;
+    const d = new Date(t.due);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function isOverdue(t) {
+    const d = dueDate(t);
+    return !t.done && !!d && d.getTime() < Date.now();
+  }
+
+  function dueInfo(t) {
+    const d = dueDate(t);
+    if (!d) return null;
+    const now = new Date();
+    const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dayDiff = Math.round((startOf(d) - startOf(now)) / 86400000);
+    const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    let text;
+    if (dayDiff === 0) text = "Today, " + time;
+    else if (dayDiff === 1) text = "Tomorrow, " + time;
+    else if (dayDiff === -1) text = "Yesterday, " + time;
+    else text = d.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " + time;
+    const overdue = isOverdue(t);
+    return { text: text, overdue: overdue, soon: !t.done && !overdue && dayDiff === 0 };
+  }
+
+  function saveTodos() {
+    if (!currentUser) return true;
+    const ok = write(tasksKey(currentUser.email), todos);
+    if (!ok) toast("Could not save (storage full)");
+    return ok;
+  }
+
+  function matches(t) {
+    if (query && t.text.toLowerCase().indexOf(query.toLowerCase()) === -1) return false;
+    if (filter === "active") return !t.done;
+    if (filter === "done") return t.done;
+    if (filter === "overdue") return isOverdue(t);
+    return true;
+  }
+
+  function badge(text, cls) {
+    const s = document.createElement("span");
+    s.className = "badge " + cls;
+    s.textContent = text;
+    return s;
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    const list = $("list");
+    list.innerHTML = "";
+
+    if (!currentUser) {
+      list.innerHTML = '<div class="empty"><div>🔒</div>Sign in or create an account<br>to add and save your tasks.</div>';
+    } else {
+      const shown = todos.filter(matches);
+      if (!shown.length) {
+        let msg;
+        if (query) msg = 'No tasks match "' + query.replace(/</g, "&lt;") + '"';
+        else if (!todos.length) msg = "No tasks yet.<br>Add your first one below!";
+        else if (filter === "overdue") msg = "Nothing overdue. Nice! 🎉";
+        else msg = "Nothing in this tab";
+        list.innerHTML = '<div class="empty"><div>' + (query ? "🔍" : "✅") + "</div>" + msg + "</div>";
+      }
+      shown.forEach(t => {
+        const li = document.createElement("li");
+        li.dataset.p = t.priority;
+        if (t.done) li.classList.add("done");
+        li.innerHTML =
+          '<span class="check">✓</span>' +
+          '<div class="body"><div class="label"></div><div class="meta"></div></div>' +
+          '<button class="mini edit" title="Edit" aria-label="Edit task">✎</button>' +
+          '<button class="mini del" title="Delete" aria-label="Delete task">×</button>';
+        li.querySelector(".label").textContent = t.text;
+
+        const meta = li.querySelector(".meta");
+        meta.appendChild(badge(PRIOS[t.priority], t.priority));
+        const info = dueInfo(t);
+        if (info) {
+          if (info.overdue) meta.appendChild(badge("Overdue · " + info.text, "overdue"));
+          else meta.appendChild(badge("⏰ " + info.text, info.soon ? "soon" : ""));
+        }
+
+        li.addEventListener("click", () => { t.done = !t.done; saveTodos(); render(); });
+        li.querySelector(".edit").addEventListener("click", (e) => { e.stopPropagation(); openSheet(t); });
+        li.querySelector(".del").addEventListener("click", (e) => {
+          e.stopPropagation();
+          todos = todos.filter(x => x.id !== t.id);
+          saveTodos(); render();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    const done = todos.filter(t => t.done).length;
+    const overdue = todos.filter(isOverdue).length;
+    const pct = todos.length ? Math.round(done / todos.length * 100) : 0;
+    $("count").textContent = done + " of " + todos.length + " completed";
+    $("percent").textContent = pct + "%" + (overdue ? " · " + overdue + " overdue" : "");
+    $("fill").style.width = pct + "%";
+  }
+
+  function addTaskObj(task) {
+    todos.unshift(task);
+    saveTodos();
+    render();
+    toast("Task added");
+  }
+
+  /* ---------- session / header ---------- */
+  function updateHeader() {
+    const btn = $("profileBtn");
+    if (currentUser) {
+      btn.classList.remove("guest");
+      paintAvatar(btn, currentUser.name, currentUser.photo);
+      $("subtitle").textContent = "Hi, " + currentUser.name.split(" ")[0] + " 👋";
+    } else {
+      btn.classList.add("guest");
+      btn.classList.remove("has-photo");
+      btn.style.backgroundImage = "";
+      btn.innerHTML = GUEST_ICON;
+      $("subtitle").textContent = "Sign in to start";
+    }
+  }
+
+  function userView(u) { return { name: u.name, email: u.email, created: u.created, photo: u.photo || "" }; }
+
+  function login(user) {
+    currentUser = userView(user);
+    write(SESSION_KEY, user.email);
+    todos = read(tasksKey(user.email), []).map(normalize);
+    filter = "all";
+    query = "";
+    $("searchInput").value = "";
+    $("searchBox").classList.remove("has-text");
+    document.querySelectorAll("#filters button").forEach(b => b.classList.toggle("active", b.dataset.f === "all"));
+    updateHeader();
+    render();
+  }
+
+  function logout() {
+    currentUser = null;
+    todos = [];
+    remove(SESSION_KEY);
+    updateHeader();
+    render();
+  }
+
+  /* ---------- overlays ---------- */
+  function openOverlay(id) { $(id).classList.add("open"); }
+  function closeOverlay(id) { $(id).classList.remove("open"); }
+  function closeAll() {
+    pendingTask = null;
+    ["taskOverlay", "authOverlay", "profileOverlay"].forEach(closeOverlay);
+  }
+
+  /* ---------- task sheet (add / edit) ---------- */
+  function setPrio(p) {
+    sheetPrio = p;
+    document.querySelectorAll("#prioChips button").forEach(b => b.classList.toggle("active", b.dataset.p === p));
+  }
+  function setSheetErr(msg) { $("taskErr").textContent = msg; }
+
+  function toLocalInput(d) {
+    const p = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  function openSheet(task) {
+    editingId = task ? task.id : null;
+    $("taskTitle").textContent = task ? "Edit task" : "New task";
+    $("taskSave").textContent = task ? "Save changes" : "Add task";
+    $("tText").value = task ? task.text : $("taskInput").value.trim();
+    $("tDue").value = task ? task.due : "";
+    setPrio(task ? task.priority : "med");
+    setSheetErr("");
+    openOverlay("taskOverlay");
+    setTimeout(() => $("tText").focus(), 60);
+  }
+
+  /* ---------- auth popup ---------- */
+  function setAuthMode(mode) {
+    authMode = mode;
+    const signup = mode === "signup";
+    document.querySelectorAll("#authTabs button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+    $("nameField").style.display = signup ? "block" : "none";
+    $("authTitle").textContent = signup ? "Create account" : "Welcome back";
+    $("authSub").textContent = pendingTask
+      ? (signup ? "Sign up to save your task and start organizing." : "Sign in to add your task.")
+      : (signup ? "Join to keep your tasks safe." : "Sign in to add and save your tasks.");
+    $("authSubmit").textContent = signup ? "Create account" : "Sign in";
+    $("passInput").setAttribute("autocomplete", signup ? "new-password" : "current-password");
+    $("switchBtn").textContent = signup ? "Sign in" : "Create an account";
+    $("authSwitch").firstChild.textContent = signup ? "Already have an account? " : "New here? ";
+    setError("");
+  }
+
+  function setError(msg, fields) {
+    $("authErr").textContent = msg;
+    ["nameInput", "emailInput", "passInput"].forEach(id => $(id).classList.remove("bad"));
+    (fields || []).forEach(id => $(id).classList.add("bad"));
+  }
+
+  function openAuth(mode) {
+    $("authForm").reset();
+    $("passInput").type = "password";
+    $("eyeBtn").textContent = "👁";
+    setAuthMode(mode || "signin");
+    openOverlay("authOverlay");
+    setTimeout(() => { (authMode === "signup" ? $("nameInput") : $("emailInput")).focus(); }, 60);
+  }
+
+  /* ---------- profile popup ---------- */
+  function fillProfile() {
+    const done = todos.filter(t => t.done).length;
+    paintAvatar($("pAvatar"), currentUser.name, currentUser.photo);
+    $("pName").textContent = currentUser.name;
+    $("pEmail").textContent = currentUser.email;
+    $("iName").textContent = currentUser.name;
+    $("iEmail").textContent = currentUser.email;
+    $("iSince").textContent = formatDate(currentUser.created);
+    $("sTotal").textContent = todos.length;
+    $("sDone").textContent = done;
+    $("sPending").textContent = todos.length - done;
+    $("sOverdue").textContent = todos.filter(isOverdue).length;
+  }
+  function showProfileView() {
+    $("profileEdit").style.display = "none";
+    $("profileView").style.display = "block";
+    fillProfile();
+  }
+  function showProfileEdit() {
+    editPhotoVal = currentUser.photo || "";
+    $("eName").value = currentUser.name;
+    $("eEmail").value = currentUser.email;
+    $("ePassCur").value = "";
+    $("ePassNew").value = "";
+    $("photoInput").value = "";
+    setEditErr("");
+    paintAvatar($("eAvatar"), currentUser.name, editPhotoVal);
+    $("profileView").style.display = "none";
+    $("profileEdit").style.display = "block";
+  }
+  function setEditErr(msg, fields) {
+    $("editErr").textContent = msg;
+    ["eName", "ePassCur", "ePassNew"].forEach(id => $(id).classList.remove("bad"));
+    (fields || []).forEach(id => $(id).classList.add("bad"));
+  }
+  function openProfile() {
+    if (!currentUser) { openAuth("signin"); return; }
+    showProfileView();
+    openOverlay("profileOverlay");
+  }
+
+  function processPhoto(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !/^image\//.test(file.type)) return reject(new Error("Please choose an image file."));
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error("Could not read that image."));
+      fr.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Could not read that image."));
+        img.onload = () => {
+          try {
+            const S = 160, side = Math.min(img.width, img.height);
+            const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+            const c = document.createElement("canvas");
+            c.width = c.height = S;
+            c.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, S, S);
+            resolve(c.toDataURL("image/jpeg", 0.85));
+          } catch (e) { reject(new Error("Could not process that image.")); }
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /* ---------- events: add bar, search, filters ---------- */
+  $("addForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = $("taskInput").value.trim();
+    if (!text) { $("taskInput").focus(); return; }
+    const task = { id: newId(), text: text, done: false, priority: "med", due: "" };
+    if (!currentUser) { pendingTask = task; openAuth("signin"); return; }
+    addTaskObj(task);
+    $("taskInput").value = "";
+  });
+
+  $("moreBtn").addEventListener("click", () => openSheet(null));
+
+  $("searchInput").addEventListener("input", (e) => {
+    query = e.target.value.trim();
+    $("searchBox").classList.toggle("has-text", !!e.target.value);
+    render();
+  });
+  $("searchClear").addEventListener("click", () => {
+    $("searchInput").value = "";
+    query = "";
+    $("searchBox").classList.remove("has-text");
+    render();
+    $("searchInput").focus();
+  });
+
+  $("filters").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    filter = b.dataset.f;
+    document.querySelectorAll("#filters button").forEach(x => x.classList.toggle("active", x === b));
+    render();
+  });
+
+  /* ---------- events: task sheet ---------- */
+  $("prioChips").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (b) setPrio(b.dataset.p);
+  });
+
+  $("quickDue").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    const q = b.dataset.q;
+    const d = new Date();
+    if (q === "clear") { $("tDue").value = ""; return; }
+    if (q === "today") {
+      if (d.getHours() < 18) d.setHours(18, 0, 0, 0); else d.setHours(23, 59, 0, 0);
+    } else {
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+    }
+    $("tDue").value = toLocalInput(d);
+    setSheetErr("");
+  });
+
+  $("taskForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = $("tText").value.trim();
+    const due = $("tDue").value;
+    if (!text) return setSheetErr("Please enter a task.");
+    if (due && isNaN(new Date(due).getTime())) return setSheetErr("Please enter a valid date and time.");
+
+    if (editingId !== null) {
+      const t = todos.find(x => x.id === editingId);
+      if (t) {
+        t.text = text; t.priority = sheetPrio; t.due = due;
+        saveTodos(); render(); toast("Task updated");
+      }
+      editingId = null;
+      closeOverlay("taskOverlay");
+      return;
+    }
+
+    const task = { id: newId(), text: text, done: false, priority: sheetPrio, due: due };
+    closeOverlay("taskOverlay");
+    if (!currentUser) { pendingTask = task; openAuth("signin"); return; }
+    addTaskObj(task);
+    $("taskInput").value = "";
+  });
+
+  /* ---------- events: popups ---------- */
+  $("profileBtn").addEventListener("click", openProfile);
+  $("profileClose").addEventListener("click", () => closeOverlay("profileOverlay"));
+  $("taskClose").addEventListener("click", () => closeOverlay("taskOverlay"));
+  $("authClose").addEventListener("click", () => { pendingTask = null; closeOverlay("authOverlay"); });
+
+  ["taskOverlay", "authOverlay", "profileOverlay"].forEach(id => {
+    $(id).addEventListener("click", (e) => {
+      if (e.target === $(id)) { if (id === "authOverlay") pendingTask = null; closeOverlay(id); }
+    });
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
+
+  $("authTabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (b) setAuthMode(b.dataset.mode);
+  });
+  $("switchBtn").addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
+
+  $("eyeBtn").addEventListener("click", () => {
+    const show = $("passInput").type === "password";
+    $("passInput").type = show ? "text" : "password";
+    $("eyeBtn").textContent = show ? "🙈" : "👁";
+  });
+
+  $("authForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("nameInput").value.trim();
+    const email = $("emailInput").value.trim().toLowerCase();
+    const pass = $("passInput").value;
+    const signup = authMode === "signup";
+
+    if (signup && name.length < 2) return setError("Please enter your full name.", ["nameInput"]);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Please enter a valid email address.", ["emailInput"]);
+    if (pass.length < 6) return setError("Password must be at least 6 characters.", ["passInput"]);
+
+    $("authSubmit").disabled = true;
+    try {
+      const users = read(USERS_KEY, {});
+      const hash = await hashPassword(pass, email);
+
+      if (signup) {
+        if (users[email]) return setError("An account with this email already exists. Try signing in.", ["emailInput"]);
+        users[email] = { name: name, email: email, hash: hash, created: Date.now(), photo: "" };
+        if (!write(USERS_KEY, users)) return setError("Could not save your account (storage is full or blocked).");
+        login(users[email]);
+        toast("Account created 🎉");
+      } else {
+        const u = users[email];
+        if (!u) return setError("No account found with this email. Please sign up.", ["emailInput"]);
+        if (u.hash !== hash) return setError("Incorrect password. Please try again.", ["passInput"]);
+        login(u);
+        toast("Welcome back, " + u.name.split(" ")[0] + "!");
+      }
+
+      closeOverlay("authOverlay");
+      if (pendingTask) {
+        addTaskObj(pendingTask);
+        pendingTask = null;
+        $("taskInput").value = "";
+      }
+    } finally {
+      $("authSubmit").disabled = false;
+    }
+  });
+
+  /* ---------- events: profile ---------- */
+  $("logoutBtn").addEventListener("click", () => {
+    closeOverlay("profileOverlay");
+    logout();
+    toast("Logged out");
+  });
+
+  $("editProfileBtn").addEventListener("click", showProfileEdit);
+  $("editCancel").addEventListener("click", showProfileView);
+
+  $("photoInput").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      editPhotoVal = await processPhoto(file);
+      paintAvatar($("eAvatar"), $("eName").value || currentUser.name, editPhotoVal);
+      setEditErr("");
+    } catch (err) {
+      setEditErr(err.message);
+    }
+    e.target.value = "";
+  });
+
+  $("removePhotoBtn").addEventListener("click", () => {
+    editPhotoVal = "";
+    paintAvatar($("eAvatar"), $("eName").value || currentUser.name, "");
+  });
+
+  $("eName").addEventListener("input", () => {
+    if (!editPhotoVal) paintAvatar($("eAvatar"), $("eName").value, "");
+  });
+
+  $("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("eName").value.trim();
+    const cur = $("ePassCur").value;
+    const np = $("ePassNew").value;
+
+    if (name.length < 2) return setEditErr("Please enter your full name.", ["eName"]);
+
+    $("profileSave").disabled = true;
+    try {
+      const users = read(USERS_KEY, {});
+      const u = users[currentUser.email];
+      if (!u) return setEditErr("Account not found. Please log in again.");
+
+      if (cur || np) {
+        if (!cur) return setEditErr("Enter your current password to change it.", ["ePassCur"]);
+        if ((await hashPassword(cur, u.email)) !== u.hash) return setEditErr("Current password is incorrect.", ["ePassCur"]);
+        if (np.length < 6) return setEditErr("New password must be at least 6 characters.", ["ePassNew"]);
+        u.hash = await hashPassword(np, u.email);
+      }
+
+      u.name = name;
+      u.photo = editPhotoVal;
+      if (!write(USERS_KEY, users)) return setEditErr("Could not save (storage full). Try a smaller photo.");
+
+      currentUser = userView(u);
+      updateHeader();
+      showProfileView();
+      toast(np ? "Profile and password updated" : "Profile updated");
+    } finally {
+      $("profileSave").disabled = false;
+    }
+  });
+
+  /* ---------- theme ---------- */
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $("themeBtn").textContent = t === "dark" ? "☀️" : "🌙";
+  }
+  $("themeBtn").addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    write(THEME_KEY, next);
+  });
+
+  /* ---------- init ---------- */
+  applyTheme(read(THEME_KEY, "light"));
+  const savedEmail = read(SESSION_KEY, null);
+  const users = read(USERS_KEY, {});
+  if (savedEmail && users[savedEmail]) login(users[savedEmail]);
+  else { updateHeader(); render(); }
+
+  // keep "Overdue" badges fresh while the page stays open
+  setInterval(() => { if (currentUser) render(); }, 60000);
+})();
+</script>
+</body>
+</html>
